@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owen's game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #ffffff;
+            font-family: sans-serif;
+            overflow: hidden; /* Prevent scrollbars when the button moves */
+            position: relative;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 50px;
+            color: #000000;
+            font-size: 64px;
+        }
+
+        #play-btn {
+            position: absolute;
+            width: 180px;
+            padding: 15px 0;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            /* Smooth transition for magnet effect */
+            transition: left 0.1s ease-out, top 0.1s ease-out;
+            user-select: none;
+        }
+
+        #noplay-btn {
+            position: absolute;
+            width: 180px;
+            padding: 15px 0;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: #888888;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        #main-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #noplay-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            font-size: 32px;
+            background-color: #ffffff;
+            position: relative;
+        }
+
+        #back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #e0e0e0;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="main-container">
+        <h1>Owen's game</h1>
+        <button id="play-btn">Play</button>
+        <button id="noplay-btn">No Play</button>
+    </div>
+
+    <div id="noplay-container">
+        <button id="back-btn">Back</button>
+        <div>ok, no play</div>
+    </div>
+
+    <script>
+        const btn = document.getElementById('play-btn');
+        const noplayBtn = document.getElementById('noplay-btn');
+        const mainContainer = document.getElementById('main-container');
+        const noplayContainer = document.getElementById('noplay-container');
+        const backBtn = document.getElementById('back-btn');
+        
+        // Detect if the user is on a touch device (like iPad/iPhone)
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        
+        // Center the button dynamically
+        function centerButton() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const bw = btn.offsetWidth || 120;
+            const bh = btn.offsetHeight || 60;
+            
+            btn.style.left = (w / 2 - bw / 2) + 'px';
+            btn.style.top = (h / 2 - bh / 2) + 'px';
+
+            const nbw = noplayBtn.offsetWidth || 150;
+            noplayBtn.style.left = (w / 2 - nbw / 2) + 'px';
+            noplayBtn.style.top = (h / 2 - bh / 2 + 100) + 'px'; // Placed below the Play button
+        }
+        
+        window.addEventListener('load', centerButton);
+        window.addEventListener('resize', centerButton);
+
+        const evasionRadius = 200; // How close the cursor/finger can get before it repels
+
+        function applyMagnetEvasion(clientX, clientY) {
+            const rect = btn.getBoundingClientRect();
+            const btnCenterX = rect.left + rect.width / 2;
+            const btnCenterY = rect.top + rect.height / 2;
+            
+            const dx = clientX - btnCenterX;
+            const dy = clientY - btnCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // If cursor is too close, push away like a magnet
+            if (distance < evasionRadius) {
+                // Stronger push the closer you get
+                const moveDist = evasionRadius - distance + 20; 
+                
+                let angle = Math.atan2(dy, dx);
+                if (distance === 0) angle = Math.random() * Math.PI * 2;
+                
+                let currentLeft = parseFloat(btn.style.left || 0);
+                let currentTop = parseFloat(btn.style.top || 0);
+                
+                let newLeft = currentLeft - Math.cos(angle) * moveDist;
+                let newTop = currentTop - Math.sin(angle) * moveDist;
+                
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                
+                // If pushed against a wall, slide tangentially so it "squeezes" out of corners
+                if (newLeft <= 0 || newLeft + rect.width >= w || newTop <= 0 || newTop + rect.height >= h) {
+                    newLeft -= Math.cos(angle + Math.PI/2) * (moveDist * 1.5);
+                    newTop -= Math.sin(angle + Math.PI/2) * (moveDist * 1.5);
+                }
+                
+                // Hard clamp so it never leaves the screen (no teleporting)
+                newLeft = Math.max(0, Math.min(newLeft, w - rect.width));
+                newTop = Math.max(0, Math.min(newTop, h - rect.height));
+                
+                btn.style.left = newLeft + 'px';
+                btn.style.top = newTop + 'px';
+            }
+        }
+
+        // Magnet effect for PC
+        document.addEventListener('mousemove', (e) => {
+            applyMagnetEvasion(e.clientX, e.clientY);
+        });
+
+        // Magnet effect for Touch devices
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                applyMagnetEvasion(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                applyMagnetEvasion(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+
+        noplayBtn.addEventListener('click', () => {
+            mainContainer.style.display = 'none';
+            noplayContainer.style.display = 'flex';
+        });
+
+        backBtn.addEventListener('click', () => {
+            noplayContainer.style.display = 'none';
+            mainContainer.style.display = 'block';
+            centerButton(); // Reset button positions when coming back
+        });
+
+        btn.addEventListener('click', () => {
+            // The button is impossible to catch! If they somehow click it, do nothing.
+        });
+
+    </script>
+</body>
+</html>
